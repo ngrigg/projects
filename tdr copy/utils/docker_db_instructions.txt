@@ -1,0 +1,108 @@
+###################################
+# resolving authentication issues #
+###################################
+
+## create init-mongo.js in root
+# add bind mount in docker-compose.yml
+# also add same user in docker-compose.yml
+
+# in local terminal
+docker compose down
+docker volume rm tdr_mongodb_data
+docker compose up
+
+# in tdr-mongodb-1 docker container exec
+bash
+mongosh -u neil -p tdrcase --authenticationDatabase admin
+use admin
+show dbs
+
+# tdr-mongodb-1 docker container can't run python
+# but tdr-worker-1 can, the following code works there
+
+>>> from pymongo import MongoClient
+>>> client = MongoClient('mongodb://neil:tdrcase@localhost:27017/tdr_grubhub')
+>>> db = client['tdr_grubhub']
+>>> collection = db['tasks']
+>>> for document in collection.find():
+...     print(document)
+...
+
+
+# Two approaches to testing scripts on docker
+1.
+docker exec -it <container_name> python /path/to/test_script.py
+2.
+Change the Dockerfile to have a different python file run via [CMD]
+
+
+docker-compose down
+docker-compose up -d --build worker
+docker-compose exec worker bash  # Access the container shell
+cat /usr/src/app/your_script.py  # Check the file contents
+
+
+Verify that the MongoDB container (mongodb) is running and healthy by running docker ps from the command line.
+docker ps
+
+(base) neilgrigg@MacBook-Pro test % docker exec -it tdr-mongodb-1 cat /etc/mongod.conf
+cat: /etc/mongod.conf: No such file or directory
+
+mongodb conf file
+root@cb8e47f659c4:/etc# cat mongod.conf.orig
+
+root@cb8e47f659c4:/etc# cat hosts
+127.0.0.1       localhost
+::1     localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+192.168.48.3    cb8e47f659c4
+
+
+
+# Access the MongoDB shell
+mongosh
+
+# Switch to the admin database
+use admin
+
+# Authenticate as the root user
+db.auth("neil", "tdrcase")
+
+# Once authenticated, switch to the tdr_grubhub database and list users
+use tdr_grubhub
+db.getUsers()
+
+
+Credentials in docker-compose.yml: The MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD environment variables
+in your Docker Compose file are used to set the root user's credentials for the MongoDB instance, specifically in the
+admin database. These credentials allow you to authenticate as the superuser when needed, but they don't automatically
+create users in other databases.
+
+In MongoDB, each database can have its own set of users with different roles and permissions. The root user's
+credentials are used to perform administrative tasks at the cluster level and to create or manage users in any database.
+However, they are not automatically used to create users in other databases.
+You need to explicitly create users for individual databases.
+
+
+Use docker-compose run: If you want to access the container's shell even if it exited, you can use the docker-compose run command instead of docker exec. This command will start a new instance of the container and open a shell session. Replace <service_name> with the name of your worker service defined in your docker-compose.yml:
+
+bash
+Copy code
+docker-compose run <service_name> /bin/sh
+For example:
+
+bash
+Copy code
+docker-compose run tdr-worker-1 /bin/sh
+
+(base) neilgrigg@MacBook-Pro tdr % docker-compose run tdr-worker /bin/sh
+no such service: tdr-worker
+(base) neilgrigg@MacBook-Pro tdr % docker-compose run worker /bin/sh
+
+You actually have to run like this
+
+
+docker compose build --no-cache worker mongodb

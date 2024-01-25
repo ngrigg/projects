@@ -1,0 +1,53 @@
+# docker-compose.yml
+version: '3.8'
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  worker:
+    build: .
+    volumes:
+      - .:/usr/src/app
+    depends_on:
+      - redis
+      - mongodb
+    environment:
+      - broker_url=redis://redis:6379/0
+      - LOG_LEVEL=DEBUG
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://mongodb:27017" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 3
+
+  mongodb:
+#    image: mongo:latest
+    build:
+      context: .
+      dockerfile: mongodb.Dockerfile
+    volumes:
+      - mongodb_data:/data/db
+      - ./entrypoint.sh:/entrypoint.sh
+      - ./init-db.sh:/init-db.sh
+      - ./mongod.conf:/etc/mongod.conf
+#      - /data/db
+#      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+#      - ./docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+#    ports: [] # remove host port mapping, can keep mongodb://init_user:init_pwd@mongodb:27017/tdr_case as connection string
+    ports:
+      - "27018:27017" # Change MongoDB's Host Port -- requires change to connection string
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: neil
+#      MONGO_INITDB_ROOT_PASSWORD: tdrcase
+    entrypoint: ["/bin/bash", "/entrypoint.sh"]
+    environment:
+      - LOG_LEVEL=DEBUG
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+volumes:
+  mongodb_data:

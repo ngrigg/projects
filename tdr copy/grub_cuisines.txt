@@ -1,0 +1,20 @@
+Fast Food
+Hamburgers
+Coffee and Tea
+American
+Chicken
+Sandwiches
+Pizza
+Mexican
+Donuts
+Diner
+Steak
+Bakery
+Bar Food
+Ice Cream
+Wings
+Breakfast
+Chinese
+Italian
+Tex-Mex
+Seafood
